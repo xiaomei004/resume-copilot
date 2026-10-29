@@ -14,9 +14,16 @@ import tempfile
 import uuid
 from pathlib import Path
 
-WINDOWS_CANDIDATES = (
-    r"C:\Program Files\LibreOffice\program\soffice.exe",
-    r"C:\Program Files (x86)\LibreOffice\program\soffice.exe",
+_LOCALAPPDATA = os.environ.get("LOCALAPPDATA", "")
+WINDOWS_CANDIDATES = tuple(
+    p
+    for p in (
+        r"C:\Program Files\LibreOffice\program\soffice.exe",
+        r"C:\Program Files (x86)\LibreOffice\program\soffice.exe",
+        (os.path.join(_LOCALAPPDATA, r"Programs\LibreOffice\program\soffice.exe") if _LOCALAPPDATA else ""),
+        r"C:\Program Files\LibreOffice 7\program\soffice.exe",
+    )
+    if p
 )
 MAC_CANDIDATES = ("/Applications/LibreOffice.app/Contents/MacOS/soffice",)
 
