@@ -56,12 +56,42 @@ def _pymupdf():
             return None
 
 
+def _custom_convert(docx_path: Path, pdf_path: Path, timeout: int = 180) -> bool:
+    """自定义转换命令：RESUME_CONVERT_CMD 里用 {docx} / {pdf} 占位。
+
+    有些环境（CI、只有 Word 的机器、用 pandoc 的人）没有 LibreOffice，
+    这条逃生通道让页数校验仍然可用，例如：
+        RESUME_CONVERT_CMD=node libreoffice-kit convert --input {docx} --output {pdf}
+    """
+    template = os.environ.get("RESUME_CONVERT_CMD", "").strip()
+    if not template:
+        return False
+    cmd = template.replace("{docx}", str(docx_path)).replace("{pdf}", str(pdf_path))
+    try:
+        proc = subprocess.run(
+            cmd,
+            shell=True,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",  # Windows 默认 GBK，转换器吐 UTF-8 会炸线程
+            timeout=timeout,
+        )
+    except (subprocess.TimeoutExpired, OSError):
+        return False
+    return proc.returncode == 0 and pdf_path.is_file()
+
+
 def docx_to_pdf(docx_path: str | Path, soffice: str, timeout: int = 180) -> Path | None:
     """把 docx 转成同目录同名的 pdf；成功返回 pdf 路径。"""
     docx_path = Path(docx_path).resolve()
     target = docx_path.with_suffix(".pdf")
     if target.exists():
         target.unlink()
+    if _custom_convert(docx_path, target):
+        return target
+    if not soffice:
+        return None
     profile = Path(tempfile.gettempdir()) / f"resume-copilot-{uuid.uuid4().hex[:8]}"
     cmd = [
         soffice,
@@ -80,6 +110,8 @@ def docx_to_pdf(docx_path: str | Path, soffice: str, timeout: int = 180) -> Path
             cmd,
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             timeout=timeout,
             creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0,
         )
@@ -122,9 +154,13 @@ def pdf_to_png(pdf_path: str | Path, png_path: str | Path, dpi: int = 140, page:
 
 def capabilities(soffice_hint: str = "") -> dict:
     soffice = find_soffice(soffice_hint)
+    custom = bool(os.environ.get("RESUME_CONVERT_CMD", "").strip())
     return {
         "soffice": soffice,
-        "pdf_convert": bool(soffice),
+        "custom_converter": custom,
+        "pdf_convert": bool(soffice) or custom,
         "pdf_read": _pymupdf() is not None,
-        "hint": "" if (soffice and _pymupdf()) else "缺少 PDF 能力：安装 LibreOffice 与 pymupdf 可自动校验页数与出预览图。",
+        "hint": ""
+        if ((soffice or custom) and _pymupdf())
+        else "缺少 PDF 能力：安装 LibreOffice（或设置 RESUME_CONVERT_CMD）并安装 pymupdf，才能校验页数与出预览图。",
     }

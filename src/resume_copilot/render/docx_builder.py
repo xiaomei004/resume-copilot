@@ -96,15 +96,42 @@ def _heading(doc, title: str, en: str, theme: Theme):
     return p
 
 
+def _text_width_cm(text: str, pt: float) -> float:
+    """粗估一行文字宽度：中日韩字符按 1 em，ASCII 按 0.55 em。"""
+    em = pt / 72 * 2.54
+    total = 0.0
+    for ch in text:
+        total += em * (1.0 if ord(ch) > 0x2E80 else 0.55)
+    return total
+
+
 def _role_line(doc, item: dict, theme: Theme, content_w: float):
+    """组织｜角色 ……… 日期。
+
+    日期用右对齐制表位推到行尾；字号与制表位都留一点余量，
+    否则「组织名 + 角色」稍长就会把日期挤到下一行（这条踩过一次坑）。
+    """
+    date = item.get("date") or ""
+    sep = "  ｜  "
+    org_pt = theme.body_pt + 0.35
+    role_pt = theme.body_pt - 0.35
+    date_pt = theme.meta_pt - 0.45
+
+    # 左半部分太长就把字号和分隔符各收一点，保证日期不被挤到下一行
+    budget = content_w - _text_width_cm("  " + date, date_pt) - 0.35
+    left = _text_width_cm(item["org"], org_pt) + _text_width_cm(sep + (item.get("role") or ""), role_pt)
+    if left > budget:
+        sep, org_pt, role_pt = " ｜ ", org_pt - 0.4, role_pt - 0.4
+        left = _text_width_cm(item["org"], org_pt) + _text_width_cm(sep + (item.get("role") or ""), role_pt)
+
     p = doc.add_paragraph()
     _para(p, theme, before=0.4, after=0.6, line=1.1, keep=True)
-    _right_tab(p, content_w - 0.3)
-    _set_font(p.add_run(item["org"]), theme, theme.body_pt + 0.45, bold=True)
+    _right_tab(p, content_w - 0.05)
+    _set_font(p.add_run(item["org"]), theme, org_pt, bold=True)
     if item.get("role"):
-        _set_font(p.add_run("  ｜  " + item["role"]), theme, theme.body_pt - 0.2, color=theme.grey)
-    if item.get("date"):
-        _set_font(p.add_run("\t" + item["date"]), theme, theme.meta_pt - 0.2, color=theme.grey)
+        _set_font(p.add_run(sep + item["role"]), theme, role_pt, color=theme.grey)
+    if date:
+        _set_font(p.add_run("\t" + date), theme, date_pt, color=theme.grey)
     if item.get("stack"):
         sp = doc.add_paragraph()
         _para(sp, theme, before=0.4, after=1.0, line=1.05)

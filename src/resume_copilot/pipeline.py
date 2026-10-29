@@ -186,7 +186,13 @@ def run(
         step("strategist", agents.STRATEGIST.title, detail=out["data"]["headline"][:40], artifact=str(art))
 
         # ⑤ 起草 + ⑥⑦ 质检循环
-        out = agents.call_agent(agents.WRITER, ctx, agents.writer_vars(ctx), post=agents.post_resume)
+        out = agents.call_agent(
+            agents.WRITER,
+            ctx,
+            agents.writer_vars(ctx),
+            post=agents.post_resume,
+            role_family=job.state["jd_profile"].get("role_family"),
+        )
         current = out["data"]
         job.state["resume"] = current  # 质检/修订阶段都要读它
         job.save("05_resume_draft.json", current)
@@ -213,7 +219,15 @@ def run(
             if round_index == rounds:
                 break
             job.state["review_issues"] = issues
-            revised = agents.call_agent(agents.REVISER, ctx, agents.reviser_vars(ctx), post=agents.post_resume)
+            cov = verify.keyword_coverage(current, job.state["jd_profile"].get("keywords") or [])
+            job.state["missing_keywords"] = cov["miss"][:10]
+            revised = agents.call_agent(
+                agents.REVISER,
+                ctx,
+                agents.reviser_vars(ctx),
+                post=agents.post_resume,
+                role_family=job.state["jd_profile"].get("role_family"),
+            )
             current = revised["data"]
             job.state["resume"] = current
             job.save(f"07_resume_revised_r{round_index + 1}.json", current)
@@ -221,7 +235,15 @@ def run(
 
         final_resume = best
         job.state["resume"] = final_resume
+        final_report = verify.check_resume(final_resume, job.state["facts"], job.state["jd_profile"])
+        job.state["quality"] = {
+            "errors": final_report["metrics"]["errors"],
+            "warnings": final_report["metrics"]["warnings"],
+            "keyword_coverage": final_report["metrics"]["keyword_coverage"],
+            "status": "clean" if final_report["pass"] and not final_report["issues"] else ("needs_review" if not final_report["pass"] else "minor_warnings"),
+        }
         job.save("08_resume_final.json", final_resume)
+        job.save("08b_quality.json", job.state["quality"])
 
         # 渲染
         theme = get_theme(theme_name, job.state["jd_profile"].get("role_family", "other"))
@@ -244,7 +266,13 @@ def run(
         )
 
         # ⑧ 速查卡
-        out = agents.call_agent(agents.COACH, ctx, agents.coach_vars(ctx), post=agents.post_coach)
+        out = agents.call_agent(
+            agents.COACH,
+            ctx,
+            agents.coach_vars(ctx),
+            post=agents.post_coach,
+            role_family=job.state["jd_profile"].get("role_family"),
+        )
         job.state["card"] = out["data"]
         job.save("10_interview_card.json", out["data"])
         md = schemas.card_to_markdown(out["data"], title=f"{job.state['jd_profile']['title']} · 面试速查卡")
@@ -280,6 +308,7 @@ def run(
             "interview_card": str(job.root / "interview_card.md") if job.state.get("card") else None,
             "report": str(job.root / "report.md"),
         },
+        "quality": job.state.get("quality"),
         "metrics": {
             **((job.state.get("render") or {}).get("sections") and {"sections": job.state["render"]["sections"]} or {}),
             "bullets": (job.state.get("render") or {}).get("bullets"),
@@ -296,6 +325,17 @@ def run(
     return {"job": job, "manifest": manifest, "root": str(job.root)}
 
 
+def _quality_text(quality: dict | None) -> str:
+    if not quality:
+        return "未执行"
+    mapping = {
+        "clean": "**通过**（无硬错误、无告警）",
+        "minor_warnings": f"基本通过（{quality['warnings']} 条告警，建议人工看一眼）",
+        "needs_review": f"**需人工复核**（仍有 {quality['errors']} 个硬错误：多为事实支撑不足或结构缺失）",
+    }
+    return mapping.get(quality.get("status", ""), str(quality))
+
+
 def _render_report(job: Job, manifest: dict) -> str:
     jd = job.state.get("jd_profile") or {}
     facts = (job.state.get("facts") or {}).get("facts", [])
@@ -308,6 +348,7 @@ def _render_report(job: Job, manifest: dict) -> str:
         f"- 岗位族：`{jd.get('role_family', '-')}`｜筛人逻辑：{jd.get('screening_logic', '-')}",
         f"- 输入：JD {len(job.inputs['files']['jd'])} 份 / 旧简历 {len(job.inputs['files']['resume'])} 份 / 补充 {len(job.inputs['files']['info'])} 份",
         f"- 事实库：{len(facts)} 条｜要点：{render.get('bullets', '-')} 条｜页数：{render.get('pages', '未校验')}",
+        f"- 质检：{_quality_text(job.state.get('quality'))}",
         "",
         "## 一、定位",
         "",

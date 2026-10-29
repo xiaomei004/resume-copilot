@@ -8,6 +8,7 @@ from .base import (
     call_agent,
     load_prompt,
     render_prompt,
+    resolve_prompts,
 )
 from .roles import (
     ALL_AGENTS,
@@ -45,6 +46,7 @@ __all__ = [
     "call_agent",
     "load_prompt",
     "render_prompt",
+    "resolve_prompts",
     "COACH",
     "CRITIC",
     "FACT_EXTRACTOR",

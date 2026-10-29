@@ -110,6 +110,33 @@ def check_fact_refs(resume: dict, facts: dict) -> list[dict]:
     return issues
 
 
+# 客户行业词：出现在简历里就等于宣称"我有这类客户经验"，
+# 事实库没提过就该报错，而不是等面试官问出来。
+INDUSTRY_TERMS = (
+    "政府客户", "金融客户", "教育客户", "医疗客户", "运营商客户",
+    "党政", "银行客户", "医院客户", "大客户", "世界 500 强",
+)
+
+
+def check_entity_leak(resume: dict, facts: dict) -> list[dict]:
+    corpus = _facts_corpus(facts)
+    issues: list[dict] = []
+    for section, org, bullet in _iter_bullets(resume):
+        text = f"{bullet.get('lead', '')}{bullet.get('text', '')}"
+        for term in INDUSTRY_TERMS:
+            if term in text and term not in corpus:
+                issues.append(
+                    {
+                        "severity": "error",
+                        "kind": "unsupported_entity",
+                        "where": f"{section} · {org}".strip(" ·"),
+                        "problem": f"出现「{term}」，但事实库里没有任何该行业客户经历",
+                        "fix": "删掉行业词，改成事实支持的表述（如「商户」「客户」）。",
+                    }
+                )
+    return issues
+
+
 def check_language(resume: dict) -> list[dict]:
     issues: list[dict] = []
     for section, org, bullet in _iter_bullets(resume):
@@ -148,13 +175,31 @@ def keyword_coverage(resume: dict, keywords: list[str]) -> dict:
     return {"ratio": round(len(hit) / len(kws), 3), "hit": hit, "miss": miss, "checked": len(kws)}
 
 
+def check_structure(resume: dict) -> list[dict]:
+    """结构性问题（缺姓名、空模块、role 没有内容）比措辞问题更致命。"""
+    from .schemas import validate_resume
+
+    return [
+        {
+            "severity": "error",
+            "kind": "structure",
+            "where": "结构",
+            "problem": message,
+            "fix": "补齐该字段；若是模型漏写，让撰写员重写这一节。",
+        }
+        for message in validate_resume(resume)
+    ]
+
+
 def check_resume(resume: dict, facts: dict, jd: dict) -> dict:
     issues: list[dict] = []
+    issues += check_structure(resume)
     issues += check_numbers(resume, facts)
     issues += check_fact_refs(resume, facts)
+    issues += check_entity_leak(resume, facts)
     issues += check_language(resume)
     cov = keyword_coverage(resume, jd.get("keywords") or [])
-    if cov["checked"] >= 6 and cov["ratio"] < 0.5:
+    if cov["checked"] >= 6 and cov["ratio"] < 0.35:
         issues.append(
             {
                 "severity": "warn",

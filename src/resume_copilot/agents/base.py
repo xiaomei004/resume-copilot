@@ -48,6 +48,13 @@ class AgentSpec:
         }
 
 
+def _prompt_path_exists(name: str) -> bool:
+    try:
+        return resources.files("resume_copilot").joinpath(PROMPT_DIR, name).is_file()
+    except (ModuleNotFoundError, AttributeError):
+        return (Path(__file__).resolve().parent.parent / PROMPT_DIR / name).is_file()
+
+
 def load_prompt(name: str) -> str:
     """从包内 prompts/ 读取模板（同时兼容源码目录运行与安装后运行）。"""
     if name in _PROMPT_CACHE:
@@ -59,6 +66,21 @@ def load_prompt(name: str) -> str:
         text = fallback.read_text(encoding="utf-8")
     _PROMPT_CACHE[name] = text
     return text
+
+
+def resolve_prompts(spec: "AgentSpec", role_family: str | None = None) -> list[str]:
+    """返回要拼进 system 的 prompt 文件链。
+
+    约定：`writer.md` 是岗位无关的底座，`writer.<role_family>.md` 是叠加的岗位变体。
+    变体不存在时自动退回只用底座，因此新增岗位族不会打断老流程。
+    """
+    chain = [spec.prompt_file]
+    if role_family:
+        stem = spec.prompt_file[:-3] if spec.prompt_file.endswith(".md") else spec.prompt_file
+        variant = f"{stem}.{role_family}.md"
+        if variant != spec.prompt_file and _prompt_path_exists(variant):
+            chain.append(variant)
+    return chain
 
 
 def render_prompt(template: str, variables: dict[str, Any]) -> str:
@@ -76,11 +98,12 @@ def render_prompt(template: str, variables: dict[str, Any]) -> str:
     return _PLACEHOLDER.sub(repl, template)
 
 
-def build_messages(spec: AgentSpec, variables: dict[str, Any]) -> list[dict]:
-    common = load_prompt("system_common.md")
-    role = render_prompt(load_prompt(spec.prompt_file), variables)
+def build_messages(spec: AgentSpec, variables: dict[str, Any], role_family: str | None = None) -> list[dict]:
+    parts = [load_prompt("system_common.md")]
+    for name in resolve_prompts(spec, role_family):
+        parts.append(render_prompt(load_prompt(name), variables))
     return [
-        {"role": "system", "content": common + "\n\n---\n\n" + role},
+        {"role": "system", "content": "\n\n---\n\n".join(parts)},
         {"role": "user", "content": "请按上述角色与 schema 输出 JSON。"},
     ]
 
@@ -113,13 +136,15 @@ def call_agent(
     variables: dict[str, Any],
     *,
     post: Callable[[dict, Any], tuple[dict, dict]] | None = None,
+    role_family: str | None = None,
 ) -> dict:
     """调一次 Agent：渲染 prompt → 请求 JSON → 可选规范化 → 留痕。
 
     `post` 返回 (raw, normalized)；流水线统一拿 raw 做留档、normalized 做下游输入。
     """
     started = time.time()
-    messages = build_messages(spec, variables)
+    chain = resolve_prompts(spec, role_family)
+    messages = build_messages(spec, variables, role_family)
     raw = ctx.llm.json(messages, purpose=spec.key, temperature=spec.temperature)
     elapsed = time.time() - started
     if post is not None:
@@ -131,5 +156,6 @@ def call_agent(
         agent=spec.title,
         seconds=round(elapsed, 2),
         permissions=spec.permissions,
+        prompts="/".join(chain),
     )
     return {"raw": raw, "data": normalized, "seconds": elapsed}

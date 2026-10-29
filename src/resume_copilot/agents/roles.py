@@ -52,7 +52,7 @@ WRITER = AgentSpec(
     title="简历撰写员",
     prompt_file="writer.md",
     permissions=(Perm.READ_JD, Perm.READ_FACTS, Perm.READ_RESEARCH, Perm.WRITE_RESUME),
-    temperature=0.5,
+    temperature=0.35,
     note="唯一有写简历权限的角色；无联网权限，只能引用事实库。",
 )
 
@@ -70,7 +70,7 @@ REVISER = AgentSpec(
     title="修订员",
     prompt_file="reviser.md",
     permissions=(Perm.READ_JD, Perm.READ_FACTS, Perm.READ_RESUME, Perm.WRITE_RESUME),
-    temperature=0.3,
+    temperature=0.25,
     note="按质检意见定点修改，禁止新增数字。",
 )
 
@@ -202,6 +202,7 @@ def reviser_vars(ctx: Any) -> dict[str, Any]:
         "issues": ctx.state.get("review_issues") or [],
         "facts": schemas.facts_as_prompt(ctx.state["facts"]),
         "jd_profile": ctx.state["jd_profile"],
+        "missing_keywords": ctx.state.get("missing_keywords") or [],
     }
 
 
