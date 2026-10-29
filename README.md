@@ -41,6 +41,10 @@ flowchart LR
 
 每一步的输入输出都落盘在 `out/job-*/steps/`，可直接复盘"这句话是谁写的、依据哪条事实"。
 
+跑出来的简历长这样（离线 mock 示例，单页 A4、无照片版式）：
+
+![sample](docs/images/sample-resume.png)
+
 ## 快速开始
 
 ```bash
@@ -157,7 +161,7 @@ resume-copilot/
 │  ├─ verify.py        # 确定性闸门
 │  ├─ schemas.py       # 数据结构与规范化
 │  └─ ingest.py        # 输入摄取（txt/md/docx/pdf/图片）
-├─ tests/              # 32 个用例，无需 pytest 也能跑
+├─ tests/              # 36 个用例，无需 pytest 也能跑
 ├─ examples/           # 示例材料 + mock 预置输出
 └─ docs/               # 架构、Agent、Prompt 说明
 ```
