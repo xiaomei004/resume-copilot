@@ -59,7 +59,7 @@ cp .env.example .env      # 然后把你的 key 填进去
 resume-copilot doctor     # 自检：key / 依赖 / LibreOffice / 检索
 ```
 
-`.env` 只需要两个值就能跑（任何 OpenAI 兼容服务都行）：
+`.env` 只需要两个值就能跑（任何 OpenAI 兼容服务都行；没有 LibreOffice 时再加 `RESUME_CONVERT_CMD`）：
 
 ```dotenv
 OPENAI_API_KEY=sk-你的key
@@ -129,6 +129,25 @@ resume-copilot serve --port 8000
 
 原则一句话：**能上网的不写简历，写简历的不上网。** 详见 [docs/agent-roles.md](docs/agent-roles.md)。
 
+## 岗位变体：一份底座 + 三份叠加
+
+`writer.md` 是**岗位无关的底座**（版式硬约束、JSON schema、事实边界、四类禁止补的内容）；
+`writer.sales.md` / `writer.rnd.md` / `writer.support.md` 是**叠加的岗位变体**（模块顺序、该岗位到底在筛什么、
+语言与配比、自检清单）。运行时按 `jd_profile.role_family` 自动附加，变体不存在就只用底座：
+
+```
+system = system_common.md + writer.md + writer.<role_family>.md
+```
+
+| 变体 | 模块顺序 | 主打 |
+| --- | --- | --- |
+| `sales` | 核心优势 → 教育 → 实习 → 项目 → 荣誉技能实践 | 客户数/线索/成交、算账能力、异地意愿 |
+| `rnd` | 教育 → 技能 → 项目 → 实习 → 荣誉 | 技术栈匹配、工程约束、指标口径 |
+| `support` | 教育 → 技能 → 实施/项目 → 实习 → 荣誉 | 交付、排障路径、驻场意愿、可复用产出 |
+
+同一个 `examples/materials_rnd` 材料，用 `--role 技术研发工程师` 跑会得到研发版（墨绿主题、项目优先）；
+换成 `examples/materials` 与 `--role 客户经理` 就是销售版（砖红主题、实习优先）。两份示例都实测：**一页、0 硬错误**。
+
 ## 三道质量闸门
 
 1. **事实闸门**：`verify.check_numbers()` 扫描简历里每个数字，必须能在事实库中找到出处；`check_fact_refs()` 拦截悬空引用。
@@ -144,6 +163,7 @@ resume-copilot serve --port 8000
 | 新的岗位族（如"售前 / 实施"） | `schemas.ROLE_KEYWORDS` 加关键词权重；`render/theme.ROLE_THEME` 选主题；`prompts/writer.md` 的模块顺序表补一行 |
 | 新配色 | `render/theme.py` 里加一个 `Theme`，无需动渲染逻辑 |
 | 换模型供应商 | `.env` 的 `OPENAI_BASE_URL` / `OPENAI_MODEL`，代码零改动 |
+| 换岗位子系统 | 新增 `prompts/writer.<role_family>.md`（写法与裁剪规则），底座 `writer.md` 不动 |
 | 加一个 Agent | `agents/roles.py` 声明 `AgentSpec` + 一个 prompt 文件，编排器自动识别 |
 | 更严的校验 | `verify.py` 加函数，`check_resume()` 里挂上去，流水线无需改 |
 
@@ -161,7 +181,7 @@ resume-copilot/
 │  ├─ verify.py        # 确定性闸门
 │  ├─ schemas.py       # 数据结构与规范化
 │  └─ ingest.py        # 输入摄取（txt/md/docx/pdf/图片）
-├─ tests/              # 36 个用例，无需 pytest 也能跑
+├─ tests/              # 44 个用例，无需 pytest 也能跑
 ├─ examples/           # 示例材料 + mock 预置输出
 └─ docs/               # 架构、Agent、Prompt 说明
 ```
