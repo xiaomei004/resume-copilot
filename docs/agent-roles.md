@@ -18,7 +18,7 @@
 | ⑤ | 简历撰写员 `writer` | `writer.md` + `writer.<family>.md` | `write_resume`（读 JD/事实/策略） | 0.35 | 策略 + 事实库 | 结构化简历 JSON | 抛错；JSON 异常会先自动修复一次 |
 | ⑥ | 质检员 `critic` | `critic.md` | `read_jd` `read_resume` `read_facts` | 0.2 | 简历 + 事实 + 机器检查结果 | `pass` + issues（severity/kind/where/fix） | 抛错则以机器报告单独判定 |
 | ⑦ | 修订员 `reviser` | `reviser.md` + `writer.<family>.md` | `write_resume` | 0.25 | 简历 + issues + 事实库 + 未覆盖关键词 | 同 schema 的简历 JSON | 抛错则保留上一版（记录在 manifest） |
-| ⑧ | 面试教练 `coach` | `coach.md` | `read_resume` | 0.6 | 最终简历 + 画像 + 简报 | 速查卡（口播稿/问题/群面或技术追问/清单） | 抛错则简历照常交付，速查卡标记缺失 |
+| ⑧ | 面试教练 `coach` | `coach.md` + `coach.<family>.md` | `read_resume` | 0.6 | 最终简历 + 画像 + 简报 | 速查卡（口播稿/问题/群面或技术追问/清单） | 抛错则简历照常交付，速查卡标记缺失 |
 
 ## 二之二、Prompt 变体怎么解析
 
@@ -30,7 +30,8 @@ resolve_prompts(spec, role_family):
 ```
 
 - 底座（`writer.md`）放岗位无关的内容：版式硬约束、JSON schema、事实边界、四类禁止补的内容。
-- 变体（`writer.sales/rnd/support.md`）只放岗位相关的判断标准与裁剪规则，**不重复 schema**。
+- 变体（`writer.*.md` / `coach.*.md`）只放岗位相关的判断标准与裁剪规则，**不重复 schema**。
+- `reviser` 通过 `variant_stem="writer"` 复用撰写员的岗位变体，改稿时不会忘掉岗位规则。
 - 变体缺失时自动退回底座，因此新增岗位族不会打断老流程。
 - `trace.jsonl` 里每个 Agent 事件都记了 `prompts=writer.md/writer.rnd.md`，方便复盘"这一稿是哪两份 prompt 合成的"。
 

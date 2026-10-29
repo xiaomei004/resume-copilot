@@ -37,6 +37,8 @@ class AgentSpec:
     permissions: tuple[str, ...] = ()
     temperature: float | None = None
     note: str = ""
+    # 复用别人的岗位变体（例如修订员要沿用撰写员的 writer.<family>.md 规则）
+    variant_stem: str = ""
 
     def describe(self) -> dict:
         return {
@@ -76,7 +78,8 @@ def resolve_prompts(spec: "AgentSpec", role_family: str | None = None) -> list[s
     """
     chain = [spec.prompt_file]
     if role_family:
-        stem = spec.prompt_file[:-3] if spec.prompt_file.endswith(".md") else spec.prompt_file
+        default_stem = spec.prompt_file[:-3] if spec.prompt_file.endswith(".md") else spec.prompt_file
+        stem = spec.variant_stem or default_stem
         variant = f"{stem}.{role_family}.md"
         if variant != spec.prompt_file and _prompt_path_exists(variant):
             chain.append(variant)

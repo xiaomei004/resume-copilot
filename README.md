@@ -145,6 +145,9 @@ system = system_common.md + writer.md + writer.<role_family>.md
 | `rnd` | 教育 → 技能 → 项目 → 实习 → 荣誉 | 技术栈匹配、工程约束、指标口径 |
 | `support` | 教育 → 技能 → 实施/项目 → 实习 → 荣誉 | 交付、排障路径、驻场意愿、可复用产出 |
 
+`coach` 同样有 `coach.sales.md`（群面/辩论）、`coach.rnd.md`（技术追问与手撕）、`coach.support.md`（客户现场处置），
+所以同一个岗位族下，"怎么写"和"怎么答"用的是同一套假设。
+
 同一个 `examples/materials_rnd` 材料，用 `--role 技术研发工程师` 跑会得到研发版（墨绿主题、项目优先）；
 换成 `examples/materials` 与 `--role 客户经理` 就是销售版（砖红主题、实习优先）。两份示例都实测：**一页、0 硬错误**。
 
@@ -185,6 +188,17 @@ resume-copilot/
 ├─ examples/           # 示例材料 + mock 预置输出
 └─ docs/               # 架构、Agent、Prompt 说明
 ```
+
+## 踩过的坑（推荐先读）
+
+[`docs/lessons.md`](docs/lessons.md) 记录了 13 个真实发生过的故障与修法，包括：
+
+- JD 的"隐含偏好"被写成候选人的事实（最危险的一类编造）
+- 修订员用同义替换糊弄质检、越改越差 → 给每版打分并保留最优
+- 关键词指标设计错误，反而在教模型说谎（覆盖率 19% → 50%）
+- 微软雅黑 + `w:docGrid` 让 9.7pt 的字渲染出 18.8pt 的行距
+- 用"文本抽取的行长度"判断换行，得到假阳性（要看 bbox 坐标）
+- Windows GBK 控制台与子进程解码
 
 ## 开发
 

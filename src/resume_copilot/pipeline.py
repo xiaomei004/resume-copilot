@@ -278,7 +278,13 @@ def run(
         md = schemas.card_to_markdown(out["data"], title=f"{job.state['jd_profile']['title']} · 面试速查卡")
         card_path = job.root / "interview_card.md"
         card_path.write_text(md, encoding="utf-8")
-        step("coach", agents.COACH.title, detail=f"{len(out['data']['questions'])} 个问题", artifact=str(card_path))
+        card_issues = verify.check_card(out["data"])
+        job.state["card_issues"] = card_issues
+        job.save("10b_card_check.json", {"issues": card_issues})
+        detail = f"{len(out['data']['questions'])} 个问题"
+        if card_issues:
+            detail += f"，{len(card_issues)} 条提示"
+        step("coach", agents.COACH.title, detail=detail, artifact=str(card_path))
 
         job.status = "done"
     except LLMError as exc:

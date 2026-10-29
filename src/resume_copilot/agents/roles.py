@@ -71,7 +71,8 @@ REVISER = AgentSpec(
     prompt_file="reviser.md",
     permissions=(Perm.READ_JD, Perm.READ_FACTS, Perm.READ_RESUME, Perm.WRITE_RESUME),
     temperature=0.25,
-    note="按质检意见定点修改，禁止新增数字。",
+    note="按质检意见定点修改，禁止新增数字；沿用 writer 的岗位变体规则。",
+    variant_stem="writer",
 )
 
 COACH = AgentSpec(

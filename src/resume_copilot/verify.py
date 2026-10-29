@@ -57,6 +57,45 @@ def _facts_corpus(facts: dict) -> str:
     return "\n".join(f["text"] + " " + " ".join(f.get("numbers") or []) for f in facts.get("facts", []))
 
 
+def check_card(card: dict) -> list[dict]:
+    """速查卡的确定性检查：时长、问题数、口播稿是否口语到能念。"""
+    issues: list[dict] = []
+    intro = card.get("self_intro") or []
+    chars = sum(len(b.get("text", "")) for b in intro)
+    if intro:
+        if chars > 700:
+            issues.append(
+                {
+                    "severity": "warn",
+                    "kind": "intro_too_long",
+                    "where": "自我介绍",
+                    "problem": f"口播稿 {chars} 字，按 200 字/分约 {chars / 200:.1f} 分钟，会超时",
+                    "fix": "删掉「第二证据」的铺陈与收尾修饰，保留所有数字，压到 560–660 字。",
+                }
+            )
+        elif chars < 480:
+            issues.append(
+                {
+                    "severity": "warn",
+                    "kind": "intro_too_short",
+                    "where": "自我介绍",
+                    "problem": f"口播稿仅 {chars} 字，约 {chars / 200:.1f} 分钟，撑不满 3 分钟",
+                    "fix": "给主证据补一个具体场景（时间、对象、被拒绝后怎么改），不要堆形容词。",
+                }
+            )
+    if len(card.get("questions") or []) < 5:
+        issues.append(
+            {
+                "severity": "warn",
+                "kind": "few_questions",
+                "where": "高频问题",
+                "problem": f"只有 {len(card.get('questions') or [])} 个问题，目标是 5 个",
+                "fix": "补到 5 个，覆盖：动机、失败经历、能力证明、压力情境、地点意愿。",
+            }
+        )
+    return issues
+
+
 def _iter_bullets(resume: dict):
     for sec in resume.get("sections", []):
         for item in sec["items"]:
