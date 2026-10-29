@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>resume-copilot · 多 Agent 简历优化</title>
+<style>
+  :root{
+    --bg:#0f1419; --panel:#161d26; --panel-2:#1d2632; --line:#2a3644;
+    --ink:#e6edf3; --muted:#8b9aab; --accent:#4a9eff; --ok:#3fb950; --warn:#d29922; --bad:#f85149;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.6 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif}
+  header{padding:18px 24px;border-bottom:1px solid var(--line);display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+  header h1{font-size:18px;margin:0;letter-spacing:.3px}
+  header .tag{font-size:12px;color:var(--muted)}
+  .pill{display:inline-block;padding:2px 8px;border:1px solid var(--line);border-radius:999px;font-size:12px;color:var(--muted)}
+  .pill.ok{color:var(--ok);border-color:#234d31}
+  .pill.bad{color:var(--bad);border-color:#5a2a2a}
+  main{padding:22px 24px 60px;max-width:1180px;margin:0 auto}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  @media (max-width:900px){.grid{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px}
+  .card h2{font-size:13px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin:0 0 12px}
+  label{display:block;font-size:13px;color:var(--muted);margin:10px 0 4px}
+  input[type=file],input[type=text],select{
+    width:100%;background:var(--panel-2);border:1px solid var(--line);border-radius:8px;
+    color:var(--ink);padding:8px 10px;font-size:13px
+  }
+  .row{display:flex;gap:10px}
+  .row > *{flex:1}
+  button{
+    margin-top:16px;width:100%;background:var(--accent);color:#06101c;border:0;border-radius:8px;
+    padding:11px 16px;font-size:14px;font-weight:600;cursor:pointer
+  }
+  button:disabled{opacity:.5;cursor:not-allowed}
+  .steps{list-style:none;margin:0;padding:0}
+  .steps li{display:flex;gap:10px;padding:7px 0;border-bottom:1px dashed var(--line);font-size:13px}
+  .steps li:last-child{border-bottom:0}
+  .dot{width:8px;height:8px;border-radius:50%;margin-top:7px;flex:0 0 auto;background:var(--muted)}
+  .dot.ok{background:var(--ok)} .dot.skip{background:var(--warn)} .dot.fail{background:var(--bad)}
+  .steps .detail{color:var(--muted);font-size:12px}
+  .files a{display:block;color:var(--accent);text-decoration:none;padding:5px 0;font-size:13px}
+  .files a:hover{text-decoration:underline}
+  pre{background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:12px;overflow:auto;
+      font-size:12px;line-height:1.55;max-height:420px;white-space:pre-wrap}
+  img.preview{width:100%;border:1px solid var(--line);border-radius:8px;margin-top:10px;background:#fff}
+  .hint{font-size:12px;color:var(--muted);margin-top:10px}
+  .err{color:var(--bad);font-size:13px;margin-top:10px;white-space:pre-wrap}
+  .full{grid-column:1 / -1}
+</style>
+</head>
+<body>
+<header>
+  <h1>resume-copilot</h1>
+  <span class="tag">JD + 旧简历 → 定制简历 + 面试速查卡</span>
+  <span id="health" class="pill">检查中…</span>
+</header>
+
+<main>
+  <div class="grid">
+    <section class="card">
+      <h2>1 · 投放材料</h2>
+      <label>JD（可多份：txt / md / docx / pdf，图片需配置视觉模型）</label>
+      <input type="file" id="jd" multiple accept=".txt,.md,.docx,.pdf,.png,.jpg,.jpeg" />
+      <label>旧简历（可多份，版本越多事实库越全）</label>
+      <input type="file" id="resume" multiple accept=".txt,.md,.docx,.pdf" />
+      <label>补充信息（可选：手写笔记、项目细节、数字）</label>
+      <input type="file" id="info" multiple accept=".txt,.md,.docx,.pdf" />
+      <label>证件照（可选，pnf/jpg）</label>
+      <input type="file" id="photo" accept=".png,.jpg,.jpeg" />
+      <label>岗位方向提示（可选，如「客户经理」「后端开发」）</label>
+      <input type="text" id="role" placeholder="留空则完全按 JD 判断" />
+      <div class="row">
+        <div>
+          <label>版式主题</label>
+          <select id="theme">
+            <option value="">按岗位自动</option>
+            <option value="navy">深蓝 navy</option>
+            <option value="teal">墨绿 teal</option>
+            <option value="brick">砖红 brick</option>
+            <option value="mono">单色 mono</option>
+          </select>
+        </div>
+        <div>
+          <label>质检轮数</label>
+          <select id="rounds">
+            <option value="1">1</option>
+            <option value="2" selected>2</option>
+            <option value="3">3</option>
+          </select>
+        </div>
+      </div>
+      <button id="run">开始优化</button>
+      <div class="hint">所有材料只在本地处理；模型调用走你 .env 里配置的接口。</div>
+    </section>
+
+    <section class="card">
+      <h2>2 · 流水线</h2>
+      <ul class="steps" id="steps"><li><span class="dot"></span><span>等待开始…</span></li></ul>
+      <div class="err" id="error"></div>
+      <div class="files" id="files"></div>
+      <div id="preview"></div>
+    </section>
+
+    <section class="card full">
+      <h2>3 · 报告</h2>
+      <pre id="report">跑完之后这里会显示 report.md。</pre>
+    </section>
+  </div>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+let timer = null;
+
+async function health() {
+  try {
+    const r = await fetch('/api/health');
+    const d = await r.json();
+    const el = $('health');
+    const bits = [];
+    bits.push(`模型 ${d.model}`);
+    bits.push(d.has_key ? 'key 已配置' : 'key 未配置（只能用 --mock）');
+    bits.push(d.pdf ? 'PDF 校验可用' : 'PDF 校验不可用');
+    bits.push(d.research ? '联网检索已启用' : '联网检索已关闭');
+    el.textContent = bits.join(' · ');
+    el.className = 'pill ' + (d.has_key ? 'ok' : 'bad');
+  } catch (e) {
+    $('health').textContent = '后端未就绪';
+    $('health').className = 'pill bad';
+  }
+}
+
+function stepRow(s) {
+  const li = document.createElement('li');
+  const dot = document.createElement('span');
+  dot.className = 'dot ' + (s.status || 'ok');
+  const box = document.createElement('div');
+  const title = document.createElement('div');
+  title.textContent = s.title + (s.agent ? '' : '');
+  box.appendChild(title);
+  if (s.detail) {
+    const d = document.createElement('div');
+    d.className = 'detail';
+    d.textContent = s.detail;
+    box.appendChild(d);
+  }
+  li.appendChild(dot); li.appendChild(box);
+  return li;
+}
+
+async function poll(id) {
+  const r = await fetch('/api/jobs/' + id);
+  const d = await r.json();
+  if (d.steps && d.steps.length) {
+    $('steps').innerHTML = '';
+    d.steps.forEach(s => $('steps').appendChild(stepRow(s)));
+  }
+  if (d.error) $('error').textContent = d.error;
+  if (d.files) {
+    $('files').innerHTML = '';
+    const names = { pdf: '简历 PDF', docx: '简历 DOCX', png: '排版预览图', card: '面试速查卡', report: '报告' };
+    for (const [k, url] of Object.entries(d.files)) {
+      const a = document.createElement('a');
+      a.href = url; a.textContent = '下载 · ' + (names[k] || k); a.target = '_blank';
+      $('files').appendChild(a);
+    }
+    if (d.files.png) {
+      $('preview').innerHTML = '<img class="preview" src="' + d.files.png + '?t=' + Date.now() + '" alt="简历预览" />';
+    }
+    if (d.files.report) {
+      const t = await fetch(d.files.report).then(x => x.text());
+      $('report').textContent = t;
+    }
+  }
+  if (d.status === 'done' || d.status === 'failed') {
+    clearInterval(timer); $('run').disabled = false;
+    if (d.status === 'failed') $('error').textContent = d.error || '流水线失败';
+    return;
+  }
+  timer = setTimeout(() => poll(id), 1500);
+}
+
+$('run').onclick = async () => {
+  const fd = new FormData();
+  const put = (id, field) => {
+    const files = $(id).files;
+    for (const f of files) fd.append(field, f);
+  };
+  put('jd', 'jd'); put('resume', 'resume'); put('info', 'info');
+  const photo = $('photo').files[0];
+  if (photo) fd.append('photo', photo);
+  fd.append('role', $('role').value);
+  fd.append('theme', $('theme').value);
+  fd.append('rounds', $('rounds').value);
+
+  if (!$('jd').files.length) { alert('至少要有 JD'); return; }
+  if (!$('resume').files.length && !$('info').files.length) { alert('至少要有旧简历或补充信息'); return; }
+
+  $('run').disabled = true;
+  $('steps').innerHTML = '<li><span class="dot"></span><span>已提交，等待后端…</span></li>';
+  $('files').innerHTML = ''; $('preview').innerHTML = ''; $('error').textContent = '';
+  try {
+    const r = await fetch('/api/jobs', { method: 'POST', body: fd });
+    if (!r.ok) throw new Error(await r.text());
+    const d = await r.json();
+    poll(d.id);
+  } catch (e) {
+    $('error').textContent = String(e);
+    $('run').disabled = false;
+  }
+};
+
+health();
+</script>
+</body>
+</html>
