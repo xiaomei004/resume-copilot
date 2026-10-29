@@ -1,0 +1,32 @@
+# ---- 环境与密钥 ----
+.env
+*.env
+!.env.example
+
+# ---- 产出物 ----
+out/
+workspace/
+jobs/
+*.docx
+*.pdf
+*.png
+*.jpg
+!docs/images/*.png
+!examples/**/*.png
+
+# ---- 缓存 ----
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+build/
+dist/
+*.egg-info/
+
+# ---- 编辑器/系统 ----
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

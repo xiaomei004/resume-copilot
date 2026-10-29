@@ -1,0 +1,47 @@
+[project]
+name = "resume-copilot"
+version = "0.1.0"
+description = "多 Agent 简历优化流水线：从 JD + 旧简历到定制简历与面试速查卡"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "LIN YIZHOU", email = "lin.yizhou@example.com" }]
+keywords = ["resume", "llm", "agent", "career", "prompt-engineering"]
+dependencies = [
+    "python-docx>=1.1.0",
+]
+
+[project.optional-dependencies]
+pdf = ["pymupdf>=1.24.0"]
+web = ["fastapi>=0.110", "uvicorn>=0.27", "python-multipart>=0.0.9"]
+image = ["Pillow>=10.0"]
+dev = ["pytest>=8.0", "ruff>=0.5"]
+
+[project.scripts]
+resume-copilot = "resume_copilot.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/example-dev/resume-copilot"
+Repository = "https://github.com/example-dev/resume-copilot"
+Issues = "https://github.com/example-dev/resume-copilot/issues"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+resume_copilot = ["prompts/*.md", "web/static/*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B"]
+ignore = ["E501"]
