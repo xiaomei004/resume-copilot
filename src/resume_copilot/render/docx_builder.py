@@ -8,11 +8,10 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
 from docx import Document
 from docx.enum.table import WD_TABLE_ALIGNMENT
-from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_TAB_ALIGNMENT
+from docx.enum.text import WD_TAB_ALIGNMENT
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Cm, Pt, RGBColor
@@ -193,9 +192,9 @@ def _fix_table(tbl, widths: list[float]) -> None:
     ind.set(qn("w:w"), "0")
     ind.set(qn("w:type"), "dxa")
     tbl_pr.append(ind)
-    for col, w in zip(tbl.columns, widths):
+    for col, w in zip(tbl.columns, widths, strict=False):
         col.width = Cm(w)
-    for cell, w in zip(tbl.rows[0].cells, widths):
+    for cell, w in zip(tbl.rows[0].cells, widths, strict=False):
         tc_pr = cell._element.get_or_add_tcPr()
         tc_w = OxmlElement("w:tcW")
         tc_w.set(qn("w:w"), str(int(w * 567)))

@@ -19,10 +19,11 @@ from __future__ import annotations
 
 import json
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 from . import agents, ingest, schemas, verify
 from .config import Config
@@ -212,7 +213,7 @@ def run(
 
             score = -errors * 10 - len(issues)
             if score > best_score:
-                best, best_score, best_report = current, score, report
+                best, best_score = current, score
 
             if errors == 0 and not issues:
                 break
@@ -345,7 +346,6 @@ def _quality_text(quality: dict | None) -> str:
 def _render_report(job: Job, manifest: dict) -> str:
     jd = job.state.get("jd_profile") or {}
     facts = (job.state.get("facts") or {}).get("facts", [])
-    resume = job.state.get("resume") or {}
     render = job.state.get("render") or {}
     lines = [
         f"# 简历优化报告 · {jd.get('title', '未命名岗位')}",
@@ -376,7 +376,7 @@ def _render_report(job: Job, manifest: dict) -> str:
         f"- 简历 DOCX：`{render.get('docx') or '-'}`",
         f"- 简历 PDF：`{render.get('pdf') or '-'}`",
         f"- 预览图：`{render.get('png') or '-'}`",
-        f"- 面试速查卡：`interview_card.md`",
+        "- 面试速查卡：`interview_card.md`",
         "",
         "## 四、下一步（需要你人工确认）",
         "",

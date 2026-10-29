@@ -191,6 +191,9 @@ resume-copilot/
 
 ## 踩过的坑（推荐先读）
 
+[`docs/build-log.md`](docs/build-log.md) 记录了**开发过程本身**：需求怎么变成设计、开发期 Agent 怎么分工、
+8 个角色的技术实现、四份 JSON 契约、降级矩阵、验证矩阵与 5 条技术决策记录（ADR）。
+
 [`docs/lessons.md`](docs/lessons.md) 记录了 13 个真实发生过的故障与修法，包括：
 
 - JD 的"隐含偏好"被写成候选人的事实（最危险的一类编造）

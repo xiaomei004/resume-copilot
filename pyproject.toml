@@ -5,7 +5,7 @@ description = "多 Agent 简历优化流水线：从 JD + 旧简历到定制简�
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
-authors = [{ name = "LIN YIZHOU", email = "lin.yizhou@example.com" }]
+authors = [{ name = "xiaomei004", email = "xiaomei004@users.noreply.github.com" }]
 keywords = ["resume", "llm", "agent", "career", "prompt-engineering"]
 dependencies = [
     "python-docx>=1.1.0",
@@ -45,3 +45,7 @@ target-version = "py310"
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP", "B"]
 ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+# FastAPI 的 File()/Form() 必须写在默认参数位置，这是框架约定
+"src/resume_copilot/web/app.py" = ["B008"]

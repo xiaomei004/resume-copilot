@@ -8,10 +8,11 @@ from __future__ import annotations
 
 import re
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from importlib import resources
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 PROMPT_DIR = "prompts"
 _PLACEHOLDER = re.compile(r"\{\{\s*(\w+)\s*\}\}")
@@ -70,7 +71,7 @@ def load_prompt(name: str) -> str:
     return text
 
 
-def resolve_prompts(spec: "AgentSpec", role_family: str | None = None) -> list[str]:
+def resolve_prompts(spec: AgentSpec, role_family: str | None = None) -> list[str]:
     """返回要拼进 system 的 prompt 文件链。
 
     约定：`writer.md` 是岗位无关的底座，`writer.<role_family>.md` 是叠加的岗位变体。

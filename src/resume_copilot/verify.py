@@ -10,7 +10,6 @@
 from __future__ import annotations
 
 import re
-from typing import Any
 
 from .schemas import bullet_stats, extract_numbers, resume_plain_text
 

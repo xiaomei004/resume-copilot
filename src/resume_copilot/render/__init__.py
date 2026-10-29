@@ -34,7 +34,7 @@ def render_resume(
 
     caps = capabilities(soffice)
     for round_index in range(max_shrink_rounds):
-        stats = build_docx(resume, current, docx_path, photo=photo)
+        build_docx(resume, current, docx_path, photo=photo)
         attempts.append({"round": round_index + 1, "body_pt": current.body_pt, "line": current.line})
         if not (want_pdf and caps["pdf_convert"]):
             break
