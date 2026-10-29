@@ -1,5 +1,9 @@
 # resume-copilot
 
+[![ci](https://github.com/xiaomei004/resume-copilot/actions/workflows/ci.yml/badge.svg)](https://github.com/xiaomei004/resume-copilot/actions/workflows/ci.yml)
+[![python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-1F4E79)](pyproject.toml)
+[![license](https://img.shields.io/badge/license-MIT-1D5C55)](LICENSE)
+
 > 多 Agent 简历优化流水线：**JD + 旧简历 → 定制化简历（DOCX/PDF）+ 一页面试速查卡**
 
 一个应届生投十个岗位，真正需要的不是"一份好简历"，而是**十份对着不同 JD 的简历**。手工做这件事的流程通常是：读 JD 猜筛人逻辑 → 翻旧简历找料 → 想主线 → 改文案 → 排一页 → 准备面试话术。每一步都不难，但一次要两三个小时，且容易写成"什么都沾一点"的通用版。
